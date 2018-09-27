@@ -93,3 +93,4 @@ foreach ($evo_posts as $post) {
     $pdo->execute($data);
 }
 
+//to do: figure out wp categories relation stuff
