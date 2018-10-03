@@ -17,8 +17,7 @@ $query = 'SELECT
             post_title,
             post_urltitle,
             post_canonical_slug_id,
-            post_main_cat_ID,
-            cat_name
+            post_main_cat_id
             from ' . $evo_prefix . '_items__item
             INNER JOIN ' . $evo_prefix . '_categories
             ON ' . $evo_prefix . '_items__item.post_main_cat_id = ' . $evo_prefix . '_categories.cat_ID
@@ -42,19 +41,6 @@ $query = 'SELECT
 
 $evo_comments = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
 
-/*$query = 'SELECT
-            blog_ID,
-            blog_shortname,
-            blog_name,
-            blog_tagline,
-            blog_description,
-            blog_access_type,
-            blog_urlname
-            from ' . $evo_prefix . '_blogs
-            ;';
-
-$evo_blogs = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);*/
-
 $query = 'SELECT
             cat_ID,
             cat_name,
@@ -70,12 +56,13 @@ $db = 'wordpress';
 include 'db.php';
 
 foreach ($evo_categories as $category) {
-    break;
     $sql = 'INSERT INTO
             ' . $wp_prefix . '_terms (
+            term_id,
             name,
             term_group
             ) VALUES (
+            :term_id,
             :name,
             "0"
             );';
@@ -83,17 +70,20 @@ foreach ($evo_categories as $category) {
     $query = $pdo->prepare($sql);
 
     $data = array(
-        'name' => $category['cat_name'],
+        'term_id' => $category['cat_ID'],
+        'name' => $category['cat_name']
     );
 
     $query->execute($data);
 
     $sql = 'INSERT INTO
             ' . $wp_prefix . '_term_taxonomy (
+            term_taxonomy_id,
             term_id,
             taxonomy,
             count
             ) VALUES (
+            :term_taxonomy_id,
             :term_id,
             "category",
             23
@@ -102,14 +92,15 @@ foreach ($evo_categories as $category) {
     $query = $pdo->prepare($sql);
 
     $data = array(
-        'term_id' => $category['cat_ID'],
+        'term_taxonomy_id' => $category['cat_ID'],
+        'term_id' => $category['cat_ID']
     );
 
     $query->execute($data);
 }
 
+
 foreach ($evo_posts as $post) {
-    break;
     $sql = 'INSERT INTO
             ' . $wp_prefix . '_posts (
             ID,
@@ -127,6 +118,7 @@ foreach ($evo_posts as $post) {
             :ID,
             "1",
             :post_date,
+            :post_date_gmt,
             :post_content,
             :post_title,
             "publish",
@@ -143,7 +135,7 @@ foreach ($evo_posts as $post) {
         'post_date' => $post['post_datecreated'],
         'post_date_gmt' => $post['post_datecreated'],
         'post_content' => htmlspecialchars_decode($post['post_content']),
-        'post_title' => $post['post_title'],
+        'post_title' => htmlspecialchars_decode($post['post_title']),
         'post_name' => $post['post_urltitle']
     );
     
@@ -162,14 +154,13 @@ foreach ($evo_posts as $post) {
 
     $data = array(
         'object_id' => $post['post_ID'],
-        'term_taxonomy_id' => $post['post_main_cat_ID']
+        'term_taxonomy_id' => $post['post_main_cat_id']
     );
 
     $query->execute($data);
 }
 
 foreach ($evo_comments as $comment) {
-    break;
     $sql = 'INSERT INTO
             ' . $wp_prefix . '_comments (
             comment_post_id,
@@ -187,6 +178,7 @@ foreach ($evo_comments as $comment) {
             :comment_author_email,
             :comment_author_url,
             :comment_date,
+            :comment_date_gmt,
             :comment_content,
             1,
             :user_id
@@ -228,6 +220,13 @@ foreach ($evo_comments as $comment) {
     else
         $data['comment_author_url'] = 'Anonym';
     
+    //optional: mark comments by author
+    
+    if ($comment['comment_author_id'] == '1') {
+        $data['comment_author'] = '';
+        $data['comment_author_url'] = '';
+    }
+    
     $query->execute($data);
 }
 
@@ -261,7 +260,7 @@ foreach ($comment_count as $count) {
     $query->execute($data);
 }
 
-//fix post count for comments
+//fix post count for categories
 
 $query = 'SELECT
             term_taxonomy_id,
@@ -287,4 +286,6 @@ foreach ($category_count as $count) {
         'count' => $count['category_count'],
         'term_taxonomy_id' => $count['term_taxonomy_id']
     );
+    
+    $query->execute($data);
 }
